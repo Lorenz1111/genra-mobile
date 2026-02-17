@@ -1,24 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, Text, View } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { BookCard } from "../../components/BookCard";
-
-type Book = {
-  id: string;
-  title: string;
-  author: string;
-  cover_url: string;
-  genre: string;
-  rating: number;
-};
+import { Book } from "../../lib/types"; // Import the real type
+import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
+  const router = useRouter();
+  // Tanggalin ang manual "type Book = ..."
+  // Gamitin ang Book type galing sa database
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,47 +16,38 @@ export default function HomeScreen() {
 
   const loadBooks = useCallback(async () => {
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user) {
-        setBooks([]);
-        setHasInterests(false);
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("interests")
-        .eq("id", userData.user.id)
-        .maybeSingle();
+      // 1. Check User Interests
+      const { data: profile } = await supabase
+          .from("profiles")
+          .select("interests")
+          .eq("id", user.id)
+          .single();
 
-      if (profileError) {
-        setBooks([]);
-        setHasInterests(false);
-        return;
-      }
-
-      const interests = Array.isArray(profile?.interests)
-        ? profile?.interests
-        : [];
+      const interests = profile?.interests || [];
       const hasPrefs = interests.length > 0;
       setHasInterests(hasPrefs);
 
+      // 2. Build Query
       let query = supabase.from("books").select("*");
 
       if (hasPrefs) {
-        query = query.in("genre", interests);
+        // Postgrest syntax for array overlap is contains or overlaps
+        // Pero simplehan muna natin: kumuha ng top rated books na pasok sa genre
+        query = query.in("genre", interests).order("rating", { ascending: false });
       } else {
         query = query.order("rating", { ascending: false });
       }
 
-      const { data: booksData, error: booksError } = await query;
+      const { data, error } = await query;
 
-      if (booksError) {
-        setBooks([]);
-        return;
+      if (error) {
+        console.error(error);
+      } else {
+        setBooks(data || []);
       }
-
-      setBooks((booksData as Book[]) ?? []);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,37 +63,47 @@ export default function HomeScreen() {
     loadBooks();
   }, [loadBooks]);
 
+  // Handle Book Click
+  const handleBookPress = (book: Book) => {
+    router.push(`/book/${book.id}`);
+  };
+
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator color="#2563EB" />
-      </View>
+        <View className="flex-1 items-center justify-center bg-white">
+          <ActivityIndicator color="#2563EB" />
+        </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-white px-6 pt-12">
-      <Text className="text-slate-900 text-2xl font-semibold">
-        {hasInterests ? "Recommended for You" : "Top Picks"}
-      </Text>
+      <View className="flex-1 bg-white px-6 pt-12">
+        <Text className="text-slate-900 text-2xl font-semibold">
+          {hasInterests ? "Recommended for You" : "Top Picks"}
+        </Text>
 
-      <FlatList
-        className="mt-6"
-        data={books}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        columnWrapperStyle={{ gap: 12 }}
-        contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
-        renderItem={({ item }) => <BookCard book={item} />}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <View className="mt-10 items-center">
-            <Text className="text-slate-500">No recommendations yet.</Text>
-          </View>
-        }
-      />
-    </View>
+        <FlatList
+            className="mt-6"
+            data={books}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
+            renderItem={({ item }) => (
+                <BookCard
+                    book={item}
+                    onPress={() => handleBookPress(item)}
+                />
+            )}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            ListEmptyComponent={
+              <View className="mt-10 items-center">
+                <Text className="text-slate-500">No books found.</Text>
+              </View>
+            }
+        />
+      </View>
   );
 }
