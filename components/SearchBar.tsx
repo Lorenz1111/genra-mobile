@@ -1,17 +1,33 @@
-import { View, TextInput, TextInputProps } from "react-native";
+import { View, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-type SearchBarProps = TextInputProps;
-
-export function SearchBar({ ...inputProps }: SearchBarProps) {
-  return (
-    <View className="flex-row items-center rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-      <Ionicons name="search-outline" size={18} color="#2563EB" />
-      <TextInput
-        placeholderTextColor="#94a3b8"
-        className="ml-3 flex-1 text-slate-900"
-        {...inputProps}
-      />
-    </View>
-  );
+interface SearchbarProps {
+    value: string;
+    onChangeText: (text: string) => void;
+    onClear: () => void;
 }
+
+export const Searchbar = ({ value, onChangeText, onClear }: SearchbarProps) => {
+    return (
+        <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3 border border-gray-200">
+            <Ionicons name="search" size={20} color="#94a3b8" />
+
+            <TextInput
+                className="flex-1 ml-3 text-slate-800 text-base font-medium"
+                placeholder="Search GenrA"
+                placeholderTextColor="#94a3b8"
+                value={value}
+                onChangeText={onChangeText}
+                autoCapitalize="none"
+                returnKeyType="search"
+            />
+
+            {/* Show Clear Button only if there is text */}
+            {value.length > 0 && (
+                <Pressable onPress={onClear}>
+                    <Ionicons name="close-circle" size={20} color="#94a3b8" />
+                </Pressable>
+            )}
+        </View>
+    );
+};
