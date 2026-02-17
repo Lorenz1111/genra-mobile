@@ -114,7 +114,7 @@ export default function LoginScreen() {
   const performGoogleLogin = async () => {
     if (loading || googleLoading) return;
 
-    setGoogleLoading(true);
+    setGoogleLoading(true)
     try {
       // Step 1: Redirect URI (Tiyakin na exp:// o genramobile:// ito)
       const redirectUri = makeRedirectUri({
