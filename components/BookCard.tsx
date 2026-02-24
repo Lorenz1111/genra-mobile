@@ -1,47 +1,30 @@
-import { Image, Pressable, Text, View } from "react-native";
+import { View, Text, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Book } from "@/lib/types";
 
-type Book = {
-  id: string;
-  title: string;
-  author: string;
-  cover_url: string;
-  genre: string;
-  rating: number;
-};
-
-type BookCardProps = {
+interface BookCardProps {
   book: Book;
-  onPress?: (book: Book) => void;
-};
-
-export function BookCard({ book, onPress }: BookCardProps) {
-  return (
-    <Pressable
-      onPress={() => onPress?.(book)}
-      className="flex-1 rounded-2xl bg-white p-3"
-    >
-      <Image
-        source={{ uri: book.cover_url }}
-        className="w-full rounded-xl bg-gray-100"
-        style={{ aspectRatio: 2 / 3 }}
-        resizeMode="cover"
-      />
-
-      <Text
-        className="mt-3 text-slate-900 text-sm font-semibold"
-        numberOfLines={2}
-      >
-        {book.title}
-      </Text>
-      <Text className="mt-1 text-slate-500 text-xs" numberOfLines={1}>
-        {book.author}
-      </Text>
-
-      <View className="mt-2 flex-row items-center gap-1">
-        <Ionicons name="star" size={12} color="#f59e0b" />
-        <Text className="text-slate-600 text-xs">{book.rating}</Text>
-      </View>
-    </Pressable>
-  );
+  onPress: () => void;
 }
+
+export const BookCard = ({ book, onPress }: BookCardProps) => {
+  return (
+      // Max-w-[48%] ensures exactly 2 items fit in a row cleanly
+      <Pressable className="flex-1 max-w-[48%] mb-4" onPress={onPress}>
+        <Image
+            source={{ uri: book.cover_url || '' }}
+            className="w-full h-56 rounded-xl bg-gray-200 mb-2"
+            resizeMode="cover"
+        />
+        <Text className="font-bold text-slate-800 text-sm" numberOfLines={2}>
+          {book.title}
+        </Text>
+        <View className="flex-row items-center mt-1">
+          <Ionicons name="star" size={12} color="#f59e0b" />
+          <Text className="text-xs text-slate-500 ml-1">
+            {book.rating ? book.rating.toFixed(1) : '0.0'}
+          </Text>
+        </View>
+      </Pressable>
+  );
+};

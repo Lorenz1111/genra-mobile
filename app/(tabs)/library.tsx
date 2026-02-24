@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import { View, Text, FlatList, RefreshControl, ActivityIndicator } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { supabase } from "../../lib/supabase";
-import { BookCard } from "../../components/BookCard";
-import { Book } from "../../lib/types";
+import { supabase } from "@/lib/supabase";
+import { BookCard } from "@/components/BookCard";
+import { Book } from "@/lib/types";
 
 export default function LibraryScreen() {
     const router = useRouter();

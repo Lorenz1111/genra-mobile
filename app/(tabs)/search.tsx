@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { View, Text, FlatList, ActivityIndicator, Keyboard } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "../../lib/supabase";
-import { Searchbar } from "../../components/SearchBar";
-import { BookCard } from "../../components/BookCard";
-import { Book } from "../../lib/types";
+import { supabase } from "@/lib/supabase";
+import { Searchbar } from "@/components/SearchBar";
+import { BookCard } from "@/components/BookCard";
+import { Book } from "@/lib/types";
 
 export default function SearchScreen() {
     const router = useRouter();

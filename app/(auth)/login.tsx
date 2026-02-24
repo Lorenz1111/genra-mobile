@@ -1,249 +1,243 @@
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
-import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri } from "expo-auth-session";
+import { useState, useEffect } from "react";
+import { View, Text, Pressable, ActivityIndicator, Image, ScrollView, Alert } from "react-native"; // SENIOR DEV FIX: Idinagdag ang Alert dito!
 import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { FormField } from "../../components/FormField";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import * as SecureStore from 'expo-secure-store';
+import { FloatingTextInput } from "@/components/FloatingTextInput";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [facebookLoading, setFacebookLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
-  const routeAfterAuth = async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
-      Alert.alert("Session missing", "Please sign in again.");
-      return;
-    }
+  const [authError, setAuthError] = useState<string | null>(null);
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("interests")
-      .eq("id", data.user.id)
-      .maybeSingle();
+  useEffect(() => {
+    const loadCredentials = async () => {
+      try {
+        const savedEmail = await SecureStore.getItemAsync('genra_email');
+        const savedPassword = await SecureStore.getItemAsync('genra_password');
 
-    if (profileError) {
-      Alert.alert("Profile load failed", profileError.message);
-      return;
-    }
+        if (savedEmail && savedPassword) {
+          setEmail(savedEmail);
+          setPassword(savedPassword);
+          setRememberMe(true);
+        }
+      } catch (error) {
+        console.error("Failed to load credentials", error);
+      }
+    };
+    loadCredentials();
+  }, []);
 
-    const interests = profile?.interests;
-    const hasEnough =
-      Array.isArray(interests) && interests.length >= 3;
-
-    router.replace(hasEnough ? "/(tabs)/home" : "/(auth)/preferences");
-  };
-
-  // Standard Email Login
   const onSignIn = async () => {
-    if (loading) return;
+    setAuthError(null);
+
+    if (!email.trim() || !password) {
+      setAuthError("Invalid email or password.");
+      return;
+    }
+
     setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
-      });
-      if (error) throw error;
-      await routeAfterAuth();
-    } catch (error: any) {
-      Alert.alert("Sign in failed", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // ✅ FIXED: Helper function na kayang magbasa ng "Code" (PKCE) at "Token"
-  const createSessionFromUrl = async (url: string) => {
-    try {
-      // 1. Parse Parameters (Check kung may ?code= o #access_token=)
-      const params: { [key: string]: string } = {};
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
 
-      // Kunin ang query params (?) at hash params (#)
-      const queryString = url.split("?")[1];
-      const hashString = url.split("#")[1];
+    if (error) {
+      setAuthError("Invalid email or password.");
+    } else if (authData.user) {
 
-      const parts = [queryString, hashString].filter(Boolean);
+      // I-check ang ban status
+      const { data: profile } = await supabase
+          .from('profiles')
+          .select('status')
+          .eq('id', authData.user.id)
+          .single();
 
-      parts.forEach(part => {
-        part?.split("&").forEach(param => {
-          const [key, value] = param.split("=");
-          if (key && value) params[key] = decodeURIComponent(value);
-        });
-      });
+      if (profile?.status === 'banned') {
+        await supabase.auth.signOut();
+        setLoading(false); // Itigil ang ikot ng button
 
-      // 2. Scenario A: PKCE Flow (Ang bagong standard - May "code")
-      if (params.code) {
-        console.log("Found PKCE Code, exchanging...");
-        const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
-        if (error) throw error;
-        return data.session;
+        setTimeout(() => {
+          Alert.alert(
+              "Access Denied",
+              "Your account has been suspended by the admin. If you believe this is a mistake, please contact support."
+          );
+        }, 100);
+        return;
       }
 
-      // 3. Scenario B: Implicit Flow (Luma/Web - May "access_token")
-      if (params.access_token && params.refresh_token) {
-        console.log("Found Tokens, setting session...");
-        const { data, error } = await supabase.auth.setSession({
-          access_token: params.access_token,
-          refresh_token: params.refresh_token,
-        });
-        if (error) throw error;
-        return data.session;
+      if (rememberMe) {
+        await SecureStore.setItemAsync('genra_email', email.trim());
+        await SecureStore.setItemAsync('genra_password', password);
+      } else {
+        await SecureStore.deleteItemAsync('genra_email');
+        await SecureStore.deleteItemAsync('genra_password');
       }
 
-      return null;
-    } catch (error) {
-      console.error("Session creation error:", error);
-      return null;
+      router.replace("/(tabs)/home");
     }
+    setLoading(false);
   };
 
-  const performGoogleLogin = async () => {
-    if (loading || googleLoading) return;
-
-    setGoogleLoading(true)
+  const performOAuth = async (provider: 'google' | 'facebook') => {
+    setAuthError(null);
+    setSocialLoading(provider);
     try {
-      // Step 1: Redirect URI (Tiyakin na exp:// o genramobile:// ito)
-      const redirectUri = makeRedirectUri({
-        preferLocalhost: false,
-      });
-
-      console.log("Redirecting to:", redirectUri);
-
-      // Step 2: Start OAuth Flow
+      const redirectUrl = Linking.createURL('/(auth)/login');
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUri,
-          skipBrowserRedirect: true,
-        },
+        provider, options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
       });
-
       if (error) throw error;
-
-      // Step 3: Open Browser
       if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
-            data.url,
-            redirectUri
-        );
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (result.type === "success") {
+          const { data: sessionData } = await supabase.auth.getSessionFromUrl(result.url);
 
-        // Step 4: Handle Return (DITO YUNG FIX)
-        if (result.type === "success" && result.url) {
-          const session = await createSessionFromUrl(result.url);
+          if (sessionData.session?.user) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('status')
+                .eq('id', sessionData.session.user.id)
+                .single();
 
-          if (session) {
-            await routeAfterAuth(); // Success! Pasok sa Home or Preferences
-          } else {
-            Alert.alert("Login Error", "Failed to create session from URL.");
+            if (profile?.status === 'banned') {
+              await supabase.auth.signOut();
+              setSocialLoading(null); // Itigil ang ikot ng social button
+
+              // SENIOR DEV FIX: Pinantay natin yung Alert sa native UI para walang page reload
+              setTimeout(() => {
+                Alert.alert(
+                    "Access Denied",
+                    "Your account has been suspended by the admin. If you believe this is a mistake, please contact support."
+                );
+              }, 100);
+              return;
+            }
           }
+
+          router.replace("/(tabs)/home");
         }
       }
     } catch (error: any) {
-      if (!error.message.includes("cancel") && !error.message.includes("dismiss")) {
-        Alert.alert("Google Login Failed", error.message);
-      }
+      setAuthError("Social login failed. Please try again.");
     } finally {
-      setGoogleLoading(false);
+      setSocialLoading(null);
     }
   };
 
-  const performFacebookLogin = async () => {
-    if (loading || facebookLoading) return;
-
-    setFacebookLoading(true);
-    try {
-      const redirectUri = makeRedirectUri({
-        preferLocalhost: false,
-      });
-
-      console.log("Redirecting to:", redirectUri);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "facebook",
-        options: {
-          redirectTo: redirectUri,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUri
-        );
-
-        if (result.type === "success" && result.url) {
-          const session = await createSessionFromUrl(result.url);
-
-          if (session) {
-            await routeAfterAuth();
-          } else {
-            Alert.alert("Login Error", "Failed to create session from URL.");
-          }
-        }
-      }
-    } catch (error: any) {
-      if (!error.message.includes("cancel") && !error.message.includes("dismiss")) {
-        Alert.alert("Facebook Login Failed", error.message);
-      }
-    } finally {
-      setFacebookLoading(false);
-    }
-  };
-
-  // ... (Keep the RETURN UI part same as before) ...
   return (
-      <View className="flex-1 bg-white px-6 justify-center">
-        <View className="gap-8">
-          <View className="items-center gap-2">
-            <Text className="text-slate-900 text-3xl font-semibold">Welcome Back</Text>
-            <Text className="text-slate-600 text-base">Sign in to continue reading on Genra.</Text>
+      <ScrollView className="flex-1 bg-white" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+        <View className="px-8 gap-8 py-10">
+
+          <Image source={require("../../assets/images/genra-logo.png")}
+                 className="self-center w-25 h-25"
+                 resizeMode="contain"/>
+
+          {/* Header */}
+          <View className="items-center mb-2">
+            <Text className="text-slate-900 text-3xl font-extrabold tracking-tight text-center">Welcome Back!</Text>
+            <Text className="text-slate-500 text-base mt-2 text-center">Sign in to continue to GenrA</Text>
           </View>
 
-          <View className="gap-4">
-            <FormField label="Email" value={email} onChangeText={setEmail} placeholder="you@genra.io" autoCapitalize="none" keyboardType="email-address" />
-            <FormField label="Password" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry />
+          {/* Social Logins */}
+          <View className="gap-3">
+            <Pressable
+                className={`flex-row items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-4 ${socialLoading ? "opacity-50" : "active:bg-gray-50"}`}
+                onPress={() => performOAuth('google')} disabled={!!socialLoading || loading}
+            >
+              {socialLoading === 'google' ? <ActivityIndicator color="#0f172a" /> : (
+                  <>
+                    <Ionicons name="logo-google" size={20} color="#DB4437" className="absolute left-6" />
+                    <Text className="text-slate-700 font-semibold ml-2">Continue with Google</Text>
+                  </>
+              )}
+            </Pressable>
 
-            <Pressable className={`flex-row items-center justify-center rounded-xl bg-primary px-5 py-4 ${loading ? "opacity-80" : ""}`} onPress={onSignIn} disabled={loading}>
-              {loading ? <ActivityIndicator color="#ffffff" /> : <Text className="text-white text-center font-semibold">Sign in</Text>}
+            <Pressable
+                className={`flex-row items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-4 ${socialLoading ? "opacity-50" : "active:bg-gray-50"}`}
+                onPress={() => performOAuth('facebook')} disabled={!!socialLoading || loading}
+            >
+              {socialLoading === 'facebook' ? <ActivityIndicator color="#0f172a" /> : (
+                  <>
+                    <Ionicons name="logo-facebook" size={20} color="#1877F2" className="absolute left-6" />
+                    <Text className="text-slate-700 font-semibold ml-2">Continue with Facebook</Text>
+                  </>
+              )}
             </Pressable>
           </View>
 
-          <View className="items-center"><Text className="text-slate-500 text-sm">Or</Text></View>
+          <View className="flex-row items-center">
+            <View className="flex-1 h-[1px] bg-gray-200" />
+            <Text className="text-slate-400 text-xs mx-4 font-medium uppercase">Or sign in with email</Text>
+            <View className="flex-1 h-[1px] bg-gray-200" />
+          </View>
 
-          <Pressable className={`flex-row items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-4 ${googleLoading ? "opacity-80" : ""}`} onPress={performGoogleLogin} disabled={googleLoading || loading}>
-            {googleLoading ? <ActivityIndicator color="#0f172a" /> : <Text className="text-slate-900 text-center font-semibold">Continue with Google</Text>}
-          </Pressable>
+          {/* Email & Password Form */}
+          <View className="gap-2">
 
-          <Pressable className={`mt-3 flex-row items-center justify-center rounded-xl bg-[#1877F2] px-5 py-4 ${facebookLoading ? "opacity-80" : ""}`} onPress={performFacebookLogin} disabled={facebookLoading || loading}>
-            {facebookLoading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="logo-facebook" size={18} color="#ffffff" />
-                <Text className="text-white text-center font-semibold">Continue with Facebook</Text>
-              </View>
-            )}
-          </Pressable>
+            <FloatingTextInput
+                label="Email address"
+                value={email}
+                onChangeText={(text) => { setEmail(text); setAuthError(null); }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                autoComplete="email"
+            />
+            {authError ? (
+                <Text className="text-red-500 text-sm ml-2">{authError}</Text>
+            ) : null}
 
-          <Link href="/(auth)/register" className="text-center text-primary mt-2">New here? Create an account</Link>
+            <FloatingTextInput
+                label="Password"
+                value={password}
+                onChangeText={(text) => { setPassword(text); setAuthError(null); }}
+                isPassword={true}
+            />
+            {authError ? (
+                <Text className="text-red-500 text-sm ml-2">{authError}</Text>
+            ) : null}
+
+            {/* Remember Me & Forgot Password */}
+            <View className="flex-row items-center justify-between mt-2">
+              <Pressable className="flex-row items-center pl-1" onPress={() => setRememberMe(!rememberMe)}>
+                <View className={`w-5 h-5 rounded border items-center justify-center mr-2 ${rememberMe ? 'bg-primary border-primary' : 'border-gray-300'}`}>
+                  {rememberMe && <Ionicons name="checkmark" size={14} color="white" />}
+                </View>
+                <Text className="text-slate-600 text-sm font-medium">Remember me</Text>
+              </Pressable>
+
+              <Pressable onPress={() => router.push("/(auth)/forgot-password")}>
+                <Text className="text-primary text-sm font-semibold">Forgot password?</Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+                className={`mt-4 flex-row items-center justify-center rounded-full border-2 border-primary bg-primary px-5 py-4 ${loading ? "opacity-80" : "active:bg-blue-700"}`}
+                onPress={onSignIn} disabled={loading || !!socialLoading}
+            >
+              {loading ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-base">Sign In</Text>}
+            </Pressable>
+          </View>
+
+          {/* Footer */}
+          <View className="flex-row justify-center items-center mt-2">
+            <Text className="text-slate-500">Don't have an account? </Text>
+            <Link href="/(auth)/register" asChild>
+              <Pressable><Text className="text-primary font-bold">Sign up!</Text></Pressable>
+            </Link>
+          </View>
+
         </View>
-      </View>
+      </ScrollView>
   );
 }
