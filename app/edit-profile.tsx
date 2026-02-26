@@ -13,8 +13,23 @@ export default function EditProfileScreen() {
     const [userId, setUserId] = useState<string | null>(null);
 
     // Form States
-    const [fullName, setFullName] = useState("");
-    const [bio, setBio] = useState("");
+    const [form, setForm] = useState({
+        full_name: "",
+        username: "",
+        bio: "",
+        website: ""
+    });
+
+    // Initial States para sa Dirty Checking
+    const [initialForm, setInitialForm] = useState({
+        full_name: "",
+        username: "",
+        bio: "",
+        website: ""
+    });
+
+    // Username Checking States ('idle' | 'checking' | 'available' | 'taken' | 'invalid')
+    const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -28,13 +43,19 @@ export default function EditProfileScreen() {
 
             const { data, error } = await supabase
                 .from("profiles")
-                .select("full_name, bio")
+                .select("full_name, username, bio, website")
                 .eq("id", user.id)
                 .single();
 
             if (data) {
-                setFullName(data.full_name || "");
-                setBio(data.bio || "");
+                const fetchedData = {
+                    full_name: data.full_name || "",
+                    username: data.username || "",
+                    bio: data.bio || "",
+                    website: data.website || ""
+                };
+                setForm(fetchedData);
+                setInitialForm(fetchedData);
             }
             setLoading(false);
         };
@@ -42,17 +63,62 @@ export default function EditProfileScreen() {
         fetchProfile();
     }, []);
 
+    // SENIOR DEV FIX: Live Username Availability Check (Debounced)
+    useEffect(() => {
+        if (!userId || form.username === initialForm.username) {
+            setUsernameStatus('idle');
+            return;
+        }
+
+        const cleanUsername = form.username.trim().toLowerCase();
+
+        if (cleanUsername.length > 0 && cleanUsername.length < 3) {
+            setUsernameStatus('invalid');
+            return;
+        }
+
+        if (cleanUsername.length === 0) {
+            setUsernameStatus('idle');
+            return;
+        }
+
+        setUsernameStatus('checking');
+
+        // Maghihintay ng 500ms bago mag-check sa DB (para hindi ma-spam ang API habang nagtatype)
+        const timeoutId = setTimeout(async () => {
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("username", cleanUsername)
+                .neq("id", userId) // Wag isama yung sariling ID natin
+                .maybeSingle(); // maybeSingle para hindi mag-throw ng error kung walang mahanap
+
+            if (data) {
+                setUsernameStatus('taken');
+            } else {
+                setUsernameStatus('available');
+            }
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [form.username, userId, initialForm.username]);
+
     const handleSave = async () => {
-        if (!userId) return;
+        if (!userId || !canSave) return;
         setSaving(true);
 
-        const { error } = await (supabase as any)
+        const { error } = await supabase
             .from("profiles")
-            .update({full_name: fullName.trim(), bio: bio.trim(),})
+            .update({
+                full_name: form.full_name.trim(),
+                username: form.username.trim().toLowerCase(),
+                bio: form.bio.trim(),
+                website: form.website.trim()
+            })
             .eq("id", userId);
 
         if (error) {
-            Alert.alert("Error", "Could not update profile.");
+            Alert.alert("Error", "Could not update profile. Make sure your username is unique.");
             console.error(error);
         } else {
             Alert.alert("Success", "Profile updated successfully!", [
@@ -62,54 +128,117 @@ export default function EditProfileScreen() {
         setSaving(false);
     };
 
+    // SENIOR DEV FIX: Dirty State Checking
+    const hasChanges = JSON.stringify(form) !== JSON.stringify(initialForm);
+    const isUsernameValid = usernameStatus === 'idle' || usernameStatus === 'available';
+    const canSave = hasChanges && !saving && isUsernameValid && form.full_name.trim().length > 0;
+
     if (loading) {
         return (
             <View className="flex-1 items-center justify-center bg-white">
-                <ActivityIndicator color="#2563EB" />
+                <ActivityIndicator color="#2563EB" size="large" />
             </View>
         );
     }
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-100">
-                <Pressable onPress={() => router.back()} className="p-2 -ml-2">
+            {/* --- HEADER --- */}
+            <View className="flex-row items-center justify-between px-6 py-4 border-b border-slate-100 z-10 bg-white shadow-sm">
+                <Pressable onPress={() => router.back()} className="p-2 -ml-2 active:opacity-50">
                     <Ionicons name="close" size={28} color="#334155" />
                 </Pressable>
-                <Text className="text-lg font-bold text-slate-900">Edit Profile</Text>
-                <Pressable onPress={handleSave} disabled={saving}>
+
+                <Text className="text-lg font-black text-slate-900">Edit Profile</Text>
+
+                <Pressable onPress={handleSave} disabled={!canSave} className="p-2 -mr-2 active:opacity-50">
                     {saving ? (
                         <ActivityIndicator color="#2563EB" size="small" />
                     ) : (
-                        <Text className="text-primary font-bold text-base">Save</Text>
+                        <Text
+                            className="font-bold text-base"
+                            style={{ color: canSave ? '#2563EB' : '#94a3b8' }} // Blue kapag pwede i-save, Gray-Blue kapag disabled
+                        >
+                            Save
+                        </Text>
                     )}
                 </Pressable>
             </View>
 
-            <ScrollView className="flex-1 px-6 pt-6">
-                {/* Name Field */}
+            <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+
+                {/* --- FULL NAME FIELD --- */}
                 <View className="mb-6">
-                    <Text className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider">Full Name</Text>
+                    <Text className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Full Name</Text>
                     <TextInput
-                        className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl text-slate-900 text-base"
+                        className="bg-slate-50 border border-slate-200 px-4 py-3.5 rounded-xl text-slate-900 text-base font-medium"
                         placeholder="Juan Dela Cruz"
-                        value={fullName}
-                        onChangeText={setFullName}
+                        placeholderTextColor="#94a3b8"
+                        value={form.full_name}
+                        onChangeText={(text) => setForm({ ...form, full_name: text })}
                     />
-                    <Text className="text-xs text-slate-400 mt-1">
+                    <Text className="text-[11px] text-slate-400 mt-1.5 font-medium ml-1">
                         This name will appear on your comments and reviews.
                     </Text>
                 </View>
 
-                {/* Bio Field (Optional, for future-proofing) */}
+                {/* --- USERNAME FIELD (With Live Status) --- */}
                 <View className="mb-6">
-                    <Text className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider">About Me (Bio)</Text>
+                    <Text className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Username</Text>
+                    <View className="relative justify-center">
+                        <TextInput
+                            className="bg-slate-50 border border-slate-200 px-4 py-3.5 rounded-xl text-slate-900 text-base font-medium pl-9"
+                            placeholder="juandelacruz"
+                            placeholderTextColor="#94a3b8"
+                            autoCapitalize="none"
+                            value={form.username}
+                            onChangeText={(text) => setForm({ ...form, username: text.replace(/\s/g, '') })} // Bawal space sa username
+                        />
+                        <Text className="absolute left-4 text-slate-400 text-base font-medium">@</Text>
+
+                        {/* Live Feedback Icon */}
+                        <View className="absolute right-4">
+                            {usernameStatus === 'checking' && <ActivityIndicator size="small" color="#64748b" />}
+                            {usernameStatus === 'available' && <Ionicons name="checkmark-circle" size={20} color="#10b981" />}
+                            {usernameStatus === 'taken' && <Ionicons name="close-circle" size={20} color="#ef4444" />}
+                        </View>
+                    </View>
+
+                    {/* Live Feedback Message */}
+                    {usernameStatus === 'taken' && (
+                        <Text className="text-[11px] text-red-500 mt-1.5 font-bold ml-1">Username is already taken.</Text>
+                    )}
+                    {usernameStatus === 'invalid' && (
+                        <Text className="text-[11px] text-red-500 mt-1.5 font-bold ml-1">Must be at least 3 characters long.</Text>
+                    )}
+                    {usernameStatus === 'available' && (
+                        <Text className="text-[11px] text-emerald-500 mt-1.5 font-bold ml-1">Username is available!</Text>
+                    )}
+                </View>
+
+                {/* --- WEBSITE FIELD --- */}
+                <View className="mb-6">
+                    <Text className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Website / Links</Text>
                     <TextInput
-                        className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl text-slate-900 text-base h-24"
+                        className="bg-slate-50 border border-slate-200 px-4 py-3.5 rounded-xl text-slate-900 text-base font-medium"
+                        placeholder="https://yourportfolio.com"
+                        placeholderTextColor="#94a3b8"
+                        autoCapitalize="none"
+                        keyboardType="url"
+                        value={form.website}
+                        onChangeText={(text) => setForm({ ...form, website: text })}
+                    />
+                </View>
+
+                {/* --- BIO FIELD --- */}
+                <View className="mb-12">
+                    <Text className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">About Me (Bio)</Text>
+                    <TextInput
+                        className="bg-slate-50 border border-slate-200 px-4 py-3.5 rounded-xl text-slate-900 text-base font-medium h-32"
                         placeholder="I love reading fantasy and sci-fi books..."
-                        value={bio}
-                        onChangeText={setBio}
+                        placeholderTextColor="#94a3b8"
+                        value={form.bio}
+                        onChangeText={(text) => setForm({ ...form, bio: text })}
                         multiline
                         textAlignVertical="top"
                     />
