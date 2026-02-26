@@ -13,11 +13,26 @@ export default function TabsLayout() {
                 tabBarActiveTintColor: primaryBlue,
                 tabBarInactiveTintColor: slate500,
                 tabBarStyle: {
+                    position: 'absolute',
+                    // SENIOR DEV FIX: Gamitin ang margin para sure na liliit at papagitna
+                    marginBottom: 30,
+                    marginHorizontal: 40, // Ito ang mag-a-adjust ng spacing sa magkabilang gilid
+
                     backgroundColor: "#ffffff",
-                    borderTopWidth: 0,
-                    elevation: 0,
-                    height: 60, // Added height for better spacing
-                    paddingBottom: 10, // Added padding for modern look
+                    borderRadius: 20,
+                    height: 65,
+                    paddingBottom: 8,
+                    paddingTop: 8,
+                    borderTopWidth: 0, // Importante 'to para mawala yung default na linya sa taas
+
+                    // Android Shadow
+                    elevation: 5,
+
+                    // iOS Shadow
+                    shadowColor: "#0f172a",
+                    shadowOffset: { width: 0, height: 12 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 20,
                 },
                 headerStyle: {
                     backgroundColor: "#ffffff",
@@ -28,7 +43,7 @@ export default function TabsLayout() {
                 headerTintColor: textDark,
                 headerShadowVisible: false,
                 tabBarIcon: ({ color, size, focused }) => {
-                    let iconName: any = "home"; // Default
+                    let iconName: any = "home";
 
                     if (route.name === "home") {
                         iconName = focused ? "home" : "home-outline";
@@ -40,7 +55,7 @@ export default function TabsLayout() {
                         iconName = focused ? "person" : "person-outline";
                     }
 
-                    return <Ionicons name={iconName} size={size} color={color} />;
+                    return <Ionicons name={iconName} size={size + 2} color={color} />;
                 },
             })}
         >
