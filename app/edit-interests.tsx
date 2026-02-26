@@ -13,7 +13,6 @@ export default function EditInterestsScreen() {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        // Kunin yung Luma niyang Genres para "pre-selected" na sa screen
         const fetchExistingPreferences = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -26,12 +25,14 @@ export default function EditInterestsScreen() {
 
                 if (error) throw error;
 
-                const existingIds = data.map(item => item.genre_id);
+                // Safety check kung walang data
+                const existingIds = data?.map(item => item.genre_id) || [];
+
                 setInitialPreferences(existingIds);
                 setPreferences(existingIds);
 
             } catch (error) {
-                console.error(error);
+                console.error("Error fetching preferences:", error);
             } finally {
                 setLoadingData(false);
             }
@@ -48,10 +49,8 @@ export default function EditInterestsScreen() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Not logged in");
 
-            // 1. DELETE: Burahin ang luma
             await supabase.from("user_preferred_genres").delete().eq("profile_id", user.id);
 
-            // 2. INSERT: Ipasok ang bago
             const newPrefsData = preferences.map((genreId) => ({
                 profile_id: user.id,
                 genre_id: genreId,
@@ -61,7 +60,7 @@ export default function EditInterestsScreen() {
             if (insertError) throw insertError;
 
             Alert.alert("Success", "Your reading preferences have been updated!");
-            router.back(); // Bumalik sa Profile screen
+            router.back();
 
         } catch (error: any) {
             Alert.alert("Error", error.message);
@@ -70,11 +69,17 @@ export default function EditInterestsScreen() {
         }
     };
 
-    const isButtonDisabled = saving || preferences.length === 0;
+    // DIRTY STATE CHECKING: I-disable ang button kung walang binago
+    const hasChanges =
+        preferences.length !== initialPreferences.length ||
+        !preferences.every((id) => initialPreferences.includes(id));
+
+    const isButtonDisabled = saving || preferences.length === 0 || !hasChanges;
 
     return (
-        <ScrollView className="flex-1 bg-white" contentContainerStyle={{ flexGrow: 1 }}>
-            <Pressable onPress={() => router.back()} className="absolute top-16 left-6 p-2 z-10">
+        <ScrollView className="flex-1 bg-white" contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
+
+            <Pressable onPress={() => router.back()} className="absolute top-16 left-6 p-2 z-10 active:opacity-50">
                 <Ionicons name="arrow-back" size={24} color="#334155" />
             </Pressable>
 
@@ -84,9 +89,10 @@ export default function EditInterestsScreen() {
                     <Text className="text-slate-500 text-base mt-2">Update your favorite genres.</Text>
                 </View>
 
-                {/* SENIOR DEV MAGIC: Ginamit natin ulit, pero ipinasa natin yung initialPreferences! */}
                 {loadingData ? (
-                    <ActivityIndicator color="#2563EB" />
+                    <View className="py-20 items-center justify-center">
+                        <ActivityIndicator size="large" color="#2563EB" />
+                    </View>
                 ) : (
                     <GenreSelector
                         initialSelected={initialPreferences}
@@ -96,11 +102,20 @@ export default function EditInterestsScreen() {
 
                 <View className="mt-auto pt-8">
                     <Pressable
-                        className={`flex-row items-center justify-center rounded-full px-5 py-4 ${isButtonDisabled ? "bg-blue-300 opacity-60" : "bg-primary active:bg-blue-700"}`}
+                        // SENIOR DEV FIX: Ginaya nang 100% ang logic mo sa PreferencesScreen!
+                        className={`flex-row items-center justify-center rounded-full px-5 py-4 ${
+                            isButtonDisabled ? "bg-blue-300 opacity-60" : "bg-primary active:bg-blue-700"
+                        }`}
                         onPress={handleSaveChanges}
                         disabled={isButtonDisabled}
                     >
-                        {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-base">Save Changes</Text>}
+                        {saving ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white font-bold text-base">
+                                Save Changes
+                            </Text>
+                        )}
                     </Pressable>
                 </View>
             </View>
