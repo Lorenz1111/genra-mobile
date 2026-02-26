@@ -17,7 +17,6 @@ export default function GenreSelector({ initialSelected = [], onSelectionChange 
     const [selected, setSelected] = useState<string[]>(initialSelected);
     const [loading, setLoading] = useState(true);
 
-    // SENIOR DEV FIX: Para sigurado tayong mag-a-update ang UI kapag natapos na mag-fetch yung parent screen
     useEffect(() => {
         if (initialSelected.length > 0) {
             setSelected(initialSelected);
@@ -68,29 +67,26 @@ export default function GenreSelector({ initialSelected = [], onSelectionChange 
                     const isMaxReached = selected.length >= 5;
                     const isDisabled = isMaxReached && !isSelected;
 
+                    // SENIOR DEV FIX: Malinis na variable assignment para sa Tailwind classes
+                    let bgClass = "bg-white border-gray-200";
+                    let textClass = "text-slate-600";
+
+                    if (isSelected) {
+                        bgClass = "bg-blue-50 border-primary";
+                        textClass = "text-primary";
+                    } else if (isDisabled) {
+                        bgClass = "bg-gray-100 border-gray-100 opacity-50"; // Gray kapag disabled na
+                        textClass = "text-slate-400";
+                    }
+
                     return (
                         <Pressable
                             key={genre.id}
                             onPress={() => togglePreference(genre.id)}
                             disabled={isDisabled}
-                            // SENIOR DEV FIX: Nilinis ang logic para hindi nag-aaway ang Tailwind classes
-                            className={`px-5 py-3 rounded-full border-2 transition-all
-                                ${isSelected
-                                ? "bg-blue-50 border-primary"
-                                : isDisabled
-                                    ? "opacity-30 bg-gray-100 border-gray-100"
-                                    : "bg-white border-gray-200"
-                            }
-                            `}
+                            className={`px-5 py-3 rounded-full border-2 transition-all active:opacity-70 ${bgClass}`}
                         >
-                            <Text className={`font-bold 
-                                ${isSelected
-                                ? "text-primary"
-                                : isDisabled
-                                    ? "text-slate-400"
-                                    : "text-slate-600"
-                            }
-                            `}>
+                            <Text className={`font-bold ${textClass}`}>
                                 {genre.name}
                             </Text>
                         </Pressable>
