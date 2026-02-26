@@ -58,7 +58,7 @@ export default function PreferencesScreen() {
                 onPress={handleFinalSubmit}
                 disabled={isButtonDisabled}
             >
-              {loading ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-base">Let's Read!</Text>}
+              {loading ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-base">Let&#39;s Read!</Text>}
             </Pressable>
           </View>
         </View>

@@ -16,8 +16,6 @@ export default function PasswordScreen() {
     const [nameError, setNameError] = useState("");
     const [passwordError, setPasswordError] = useState("");
 
-    // SENIOR DEV FIX: Tinanggal natin yung generator dito sa labas.
-
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
