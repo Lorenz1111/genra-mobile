@@ -231,9 +231,9 @@ export default function LoginScreen() {
 
           {/* Footer */}
           <View className="flex-row justify-center items-center mt-2">
-            <Text className="text-slate-500">Don't have an account? </Text>
+            <Text className="text-slate-500">Don&apos;t have an account?</Text>
             <Link href="/(auth)/register" asChild>
-              <Pressable><Text className="text-primary font-bold">Sign up!</Text></Pressable>
+              <Pressable><Text className="text-primary font-bold"> Sign up for free</Text></Pressable>
             </Link>
           </View>
 
