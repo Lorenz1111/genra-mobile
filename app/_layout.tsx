@@ -4,9 +4,12 @@ import { Alert } from "react-native";
 import { supabase } from "@/lib/supabase";
 import "./global.css";
 
+// SENIOR DEV FIX: 1. Idagdag itong import sa taas
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
 export default function RootLayout() {
     const router = useRouter();
-    const segments = useSegments(); // SENIOR DEV FIX: Para malaman kung nasaang screen tayo
+    const segments = useSegments();
 
     useEffect(() => {
         const checkBanStatus = async (session: any) => {
@@ -47,14 +50,17 @@ export default function RootLayout() {
         return () => {
             subscription.unsubscribe();
         };
-    }, [segments]); // Bantayan ang paglipat-lipat ng screen
+    }, [segments]);
 
     return (
-        <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="book/[id]" options={{ headerShown: false, presentation: 'card' }} />
-            <Stack.Screen name="book/read/[chapterId]" options={{ headerShown: false }} />
-        </Stack>
+        // SENIOR DEV FIX: 2. Balutin ang buong Stack dito at wag kalimutan ang flex: 1!
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="book/[id]" options={{ headerShown: false, presentation: 'card' }} />
+                <Stack.Screen name="book/read/[chapterId]" options={{ headerShown: false }} />
+            </Stack>
+        </GestureHandlerRootView>
     );
 }
