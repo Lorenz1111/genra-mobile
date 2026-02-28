@@ -13,7 +13,10 @@ export default function PreferencesScreen() {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Please log in again.");
+      if (!user) {
+        Alert.alert("Error", "Please log in again.");
+        return;
+      }
 
       const userPrefsData = preferences.map((genreId) => ({
         profile_id: user.id,
@@ -24,11 +27,15 @@ export default function PreferencesScreen() {
           .from("user_preferred_genres")
           .insert(userPrefsData);
 
-      if (prefsError) throw prefsError;
+      if (prefsError) {
+        Alert.alert("Error", prefsError.message);
+        return;
+      }
       router.replace("/(tabs)/home");
 
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      Alert.alert("Error", message);
     } finally {
       setLoading(false);
     }

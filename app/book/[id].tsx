@@ -1,13 +1,18 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, Text, Image, ScrollView, Pressable, ActivityIndicator, Alert, Share, Modal } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
-import { Book, Chapter } from "@/lib/types";
+import type { Tables } from "@/lib/types";
 import { Ionicons } from "@expo/vector-icons";
 import { StarRating } from "@/components/StarRating";
 import { CommentSection } from "@/components/CommentSection";
 import { LinearGradient } from 'expo-linear-gradient';
+
+type Chapter = Tables<"chapters">;
+type BookWithRelations = Tables<"books"> & {
+    profiles?: { full_name: string | null } | null;
+    book_genres?: { genres?: { name: string | null } | null }[] | null;
+};
 
 export default function BookDetails() {
     const { id } = useLocalSearchParams();
@@ -15,7 +20,7 @@ export default function BookDetails() {
 
     const bookId = typeof id === 'string' ? id : (id?.[0] || '');
 
-    const [book, setBook] = useState<any>(null);
+    const [book, setBook] = useState<BookWithRelations | null>(null);
     const [chapters, setChapters] = useState<Chapter[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -47,7 +52,7 @@ export default function BookDetails() {
                 .eq("id", bookId)
                 .single();
 
-            if (bookData) setBook(bookData);
+            if (bookData) setBook(bookData as BookWithRelations);
 
             const { data: chapterData } = await supabase
                 .from("chapters")
@@ -55,7 +60,7 @@ export default function BookDetails() {
                 .eq("book_id", bookId)
                 .order("sequence_number", { ascending: true });
 
-            if (chapterData) setChapters(chapterData as any);
+            if (chapterData) setChapters(chapterData as Chapter[]);
 
             if (user) {
                 const { data: bookmark } = await supabase.from("user_library").select("*").eq("user_id", user.id).eq("book_id", bookId).single();
@@ -102,28 +107,42 @@ export default function BookDetails() {
         const previousState = isBookmarked;
         setIsBookmarked(!isBookmarked);
 
-        try {
-            if (previousState) {
-                const { error } = await supabase.from("user_library").delete().eq("user_id", user.id).eq("book_id", book.id);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.from("user_library").insert({ user_id: user.id, book_id: book.id });
-                if (error) throw error;
+        if (previousState) {
+            const { error: deleteError } = await supabase
+                .from("user_library")
+                .delete()
+                .eq("user_id", user.id)
+                .eq("book_id", book.id);
+
+            if (deleteError) {
+                setIsBookmarked(previousState);
+                Alert.alert("Error", "Could not update library.");
+                return;
             }
-        } catch (error) {
-            setIsBookmarked(previousState);
-            Alert.alert("Error", "Could not update library.");
+        } else {
+            const { error: insertError } = await supabase
+                .from("user_library")
+                .insert({ user_id: user.id, book_id: book.id });
+
+            if (insertError) {
+                setIsBookmarked(previousState);
+                Alert.alert("Error", "Could not update library.");
+                return;
+            }
         }
     };
 
     const handleShare = async () => {
+        if (!book) return;
+
         try {
             await Share.share({
                 message: `Check out this awesome story I'm reading on GenrA: "${book.title}" by ${book.profiles?.full_name || 'Unknown Author'}!\n\nRead it here: https://genra.app/book/${book.id}`,
                 title: book.title,
             });
-        } catch (error: any) {
-            Alert.alert(error.message);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Could not share this book.";
+            Alert.alert(message);
         }
     };
 
@@ -245,7 +264,7 @@ export default function BookDetails() {
                                 {book.description || "No synopsis available."}
                             </Text>
 
-                            {(book.description?.length > 150) && (
+                            {((book.description?.length ?? 0) > 150) && (
                                 <Pressable onPress={() => setIsDescExpanded(!isDescExpanded)} className="mt-2 self-start active:opacity-50">
                                     <Text className="text-primary font-bold text-sm">
                                         {isDescExpanded ? "Show Less" : "Read More"}
@@ -286,6 +305,9 @@ export default function BookDetails() {
                             ) : (
                                 sortedChapters.map((chapter) => {
                                     const isCurrentChapter = readingProgress?.chapter_id === chapter.id;
+                                    const chapterDateLabel = chapter.created_at
+                                        ? new Date(chapter.created_at).toLocaleDateString()
+                                        : "Unknown date";
 
                                     return (
                                         <Pressable
@@ -317,7 +339,7 @@ export default function BookDetails() {
                                                     )}
                                                 </View>
                                                 <Text className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">
-                                                    {new Date(chapter.created_at).toLocaleDateString()}
+                                                    {chapterDateLabel}
                                                 </Text>
                                             </View>
 

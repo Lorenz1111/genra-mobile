@@ -3,9 +3,11 @@ import { View, Text, FlatList, RefreshControl, Pressable, Image, Alert } from "r
 import { useFocusEffect, useRouter, Tabs } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
-import { Book } from "@/lib/types";
+import { Tables } from "@/lib/types";
 import { Ionicons } from "@expo/vector-icons";
-import { Swipeable } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+
+type Book = Tables<"books">;
 
 // --- TIME AGO FORMATTER ---
 const timeAgo = (dateString: string) => {

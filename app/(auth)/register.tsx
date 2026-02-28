@@ -16,6 +16,31 @@ export default function RegisterScreen() {
     const [loading, setLoading] = useState(false);
     const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
+    const establishSessionFromOAuthUrl = async (callbackUrl: string) => {
+        const parsedUrl = new URL(callbackUrl);
+        const queryParams = parsedUrl.searchParams;
+        const hashParams = new URLSearchParams(parsedUrl.hash.startsWith("#") ? parsedUrl.hash.slice(1) : parsedUrl.hash);
+
+        const accessToken = hashParams.get("access_token") ?? queryParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token") ?? queryParams.get("refresh_token");
+        const authCode = queryParams.get("code") ?? hashParams.get("code");
+
+        if (accessToken && refreshToken) {
+            const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+            });
+            return { session: data.session, error };
+        }
+
+        if (authCode) {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+            return { session: data.session, error };
+        }
+
+        return { session: null, error: new Error("No OAuth session data found in callback URL.") };
+    };
+
     const performOAuth = async (provider: 'google' | 'facebook') => {
         setSocialLoading(provider);
         setEmailError(""); // Reset error pag nag-social login
@@ -24,16 +49,26 @@ export default function RegisterScreen() {
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider, options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
             });
-            if (error) throw error;
-            if (data?.url) {
-                const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-                if (result.type === "success") {
-                    await supabase.auth.getSessionFromUrl(result.url);
-                    router.replace("/(auth)/setup-profile");
-                }
+            if (error || !data?.url) {
+                setEmailError("Social login failed. Please try again.");
+                return;
             }
-        } catch (error: any) {
-            setEmailError(error.message); // Inline error imbes na Alert
+
+            const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+            if (result.type !== "success" || !result.url) {
+                return;
+            }
+
+            const { session, error: sessionError } = await establishSessionFromOAuthUrl(result.url);
+            if (sessionError || !session?.user) {
+                setEmailError("Social login failed. Please try again.");
+                return;
+            }
+
+            router.replace("/(auth)/setup-profile");
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Social login failed. Please try again.";
+            setEmailError(message); // Inline error imbes na Alert
         } finally {
             setSocialLoading(null);
         }
@@ -53,7 +88,7 @@ export default function RegisterScreen() {
 
         try {
             // 2. Check kung registered na sa database (Requires 'email' column sa profiles table)
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('profiles')
                 .select('id')
                 .eq('email', trimmedEmail)

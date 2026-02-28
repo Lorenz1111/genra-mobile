@@ -3,7 +3,8 @@ import { ActivityIndicator, FlatList, RefreshControl, Text, View, Image, Pressab
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
-import { useRouter, useNavigation } from "expo-router";
+import { useRouter } from "expo-router";
+import { useScrollToTop } from "@react-navigation/native";
 import { BookCard } from "@/components/BookCard";
 
 const HorizontalBookList = ({ title, books, onBookPress, emptyMessage = "No books found.", isRanked = false }: { title: string, books: any[], onBookPress: (book: any) => void, emptyMessage?: string, isRanked?: boolean }) => {
@@ -45,8 +46,8 @@ const HorizontalBookList = ({ title, books, onBookPress, emptyMessage = "No book
 
 export default function HomeScreen() {
     const router = useRouter();
-    const navigation = useNavigation();
     const scrollViewRef = useRef<ScrollView>(null);
+    useScrollToTop(scrollViewRef);
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -66,16 +67,6 @@ export default function HomeScreen() {
     const [topRatedBooks, setTopRatedBooks] = useState<any[]>([]);
     const [freshBooks, setFreshBooks] = useState<any[]>([]);
     const [bookOfTheWeek, setBookOfTheWeek] = useState<any>(null);
-
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('tabPress', (e) => {
-            if (navigation.isFocused()) {
-                e.preventDefault();
-                scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-            }
-        });
-        return unsubscribe;
-    }, [navigation]);
 
     const loadDashboardData = useCallback(async () => {
         try {
@@ -259,7 +250,7 @@ export default function HomeScreen() {
                         >
                             <Image source={{ uri: bookOfTheWeek.cover_url || 'https://via.placeholder.com/150x200' }} className="w-24 h-36 rounded-lg bg-slate-200" resizeMode="cover" />
                             <View className="flex-1 ml-4">
-                                <View className="bg-amber-100 self-start px-2 py-0.5 rounded text-amber-800 mb-1 border border-amber-200"><Text className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Editor's Pick</Text></View>
+                                <View className="bg-amber-100 self-start px-2 py-0.5 rounded text-amber-800 mb-1 border border-amber-200"><Text className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Editor&#39;s Pick</Text></View>
                                 <Text className="text-lg font-bold text-slate-900" numberOfLines={2}>{bookOfTheWeek.title}</Text>
                                 <Text className="text-xs text-slate-500 font-medium mb-2">by {bookOfTheWeek.profiles?.full_name || 'Unknown Author'}</Text>
                                 <Text className="text-sm text-slate-600 mb-2 leading-5" numberOfLines={3}>

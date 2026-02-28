@@ -23,7 +23,7 @@ export default function PasswordScreen() {
             const prefix = email.split('@')[0];
             setFullName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
         }
-    }, [email]);
+    }, [email, fullName]);
 
     const handleContinue = async () => {
         let hasError = false;
@@ -52,10 +52,16 @@ export default function PasswordScreen() {
                 password: password,
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                Alert.alert("Registration Error", authError.message);
+                return;
+            }
 
             const userId = authData.user?.id;
-            if (!userId) throw new Error("Failed to retrieve user ID.");
+            if (!userId) {
+                Alert.alert("Registration Error", "Failed to retrieve user ID.");
+                return;
+            }
 
             let finalAvatarUrl = null;
 
@@ -96,13 +102,17 @@ export default function PasswordScreen() {
                 .update({full_name: fullName.trim(), username: generatedUsername, ...(finalAvatarUrl && { avatar_url: finalAvatarUrl })})
                 .eq('id', userId);
 
-            if (profileError) throw profileError;
+            if (profileError) {
+                Alert.alert("Registration Error", profileError.message);
+                return;
+            }
 
             // 4. DONE! IPASA NA SA PREFERENCES PARA PUMILI NG GENRE
             router.replace("/(auth)/preferences");
 
-        } catch (error: any) {
-            Alert.alert("Registration Error", error.message);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+            Alert.alert("Registration Error", message);
         } finally {
             setLoading(false);
         }

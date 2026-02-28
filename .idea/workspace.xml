@@ -4,17 +4,26 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="66da7d88-e00a-4155-a42a-d29dfe116128" name="Changes" comment="Change the text into sign up for free">
+    <list default="true" id="66da7d88-e00a-4155-a42a-d29dfe116128" name="Changes" comment="Download entire supabase schema">
+      <change afterPath="$PROJECT_DIR$/eas.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/app.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(auth)/login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/login.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(auth)/password.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/password.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(auth)/preferences.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/preferences.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(auth)/register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/register.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(tabs)/home.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/home.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(tabs)/library.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/library.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/profile.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(tabs)/search.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(tabs)/search.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/SearchBar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/SearchBar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/_layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/book/[id].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/book/[id].tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/book/read/[chapterId].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/book/read/[chapterId].tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/change-password.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/change-password.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/edit-interests.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/edit-interests.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/edit-profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/edit-profile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/CommentSection.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/CommentSection.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/lib/types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,7 +31,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="158" />
+    <option name="cachedIndexableFilesCount" value="159" />
   </component>
   <component name="Git.Settings">
     <excluded-from-favorite>
@@ -130,7 +139,10 @@
       <workItem from="1771939082830" duration="15915000" />
       <workItem from="1771995965499" duration="20123000" />
       <workItem from="1772033135224" duration="11124000" />
-      <workItem from="1772071431885" duration="10171000" />
+      <workItem from="1772071431885" duration="13340000" />
+      <workItem from="1772180672599" duration="16973000" />
+      <workItem from="1772244882054" duration="4605000" />
+      <workItem from="1772265192405" duration="3434000" />
     </task>
     <task id="LOCAL-00001" summary="Changes - Multi Provider for SignUp">
       <option name="closed" value="true" />
@@ -308,7 +320,31 @@
       <option name="project" value="LOCAL" />
       <updated>1772123734968</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="Update">
+      <option name="closed" value="true" />
+      <created>1772123760844</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1772123760844</updated>
+    </task>
+    <task id="LOCAL-00024" summary="Download entire supabase schema">
+      <option name="closed" value="true" />
+      <created>1772123830804</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1772123830804</updated>
+    </task>
+    <task id="LOCAL-00025" summary="Download entire supabase schema">
+      <option name="closed" value="true" />
+      <created>1772123835981</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1772123835981</updated>
+    </task>
+    <option name="localTasksCounter" value="26" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -341,6 +377,8 @@
     <MESSAGE value="Add future ads, alert for future feature, row genre slider &amp; trending row like netflix" />
     <MESSAGE value="Add history, saved, future feature like download &amp; fix the UI" />
     <MESSAGE value="Change the text into sign up for free" />
-    <option name="LAST_COMMIT_MESSAGE" value="Change the text into sign up for free" />
+    <MESSAGE value="Update" />
+    <MESSAGE value="Download entire supabase schema" />
+    <option name="LAST_COMMIT_MESSAGE" value="Download entire supabase schema" />
   </component>
 </project>

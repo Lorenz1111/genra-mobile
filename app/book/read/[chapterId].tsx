@@ -23,6 +23,7 @@ const SPACING_MULTIPLIERS = {
 
 export default function ReaderScreen() {
     const { chapterId } = useLocalSearchParams();
+    const normalizedChapterId = Array.isArray(chapterId) ? chapterId[0] : chapterId;
     const router = useRouter();
 
     const [chapter, setChapter] = useState<any>(null);
@@ -46,7 +47,7 @@ export default function ReaderScreen() {
             const { data: chapterData, error } = await supabase
                 .from("chapters")
                 .select("*")
-                .eq("id", chapterId)
+                .eq("id", normalizedChapterId)
                 .single();
 
             if (error) {
@@ -65,7 +66,7 @@ export default function ReaderScreen() {
                 .order("sequence_number", { ascending: true });
 
             if (allChapters) {
-                const currentIndex = allChapters.findIndex(c => c.id === chapterId);
+                const currentIndex = allChapters.findIndex(c => c.id === normalizedChapterId);
                 setPrevChapter(currentIndex > 0 ? allChapters[currentIndex - 1] : null);
                 setNextChapter(currentIndex < allChapters.length - 1 ? allChapters[currentIndex + 1] : null);
             }
@@ -77,15 +78,15 @@ export default function ReaderScreen() {
                     .upsert({
                         user_id: user.id,
                         book_id: chapterData.book_id,
-                        chapter_id: chapterId,
+                        chapter_id: normalizedChapterId,
                         updated_at: new Date().toISOString(),
                     });
             }
             setLoading(false);
         };
 
-        if (chapterId) fetchContent();
-    }, [chapterId]);
+        if (normalizedChapterId) fetchContent();
+    }, [normalizedChapterId]);
 
     const increaseFont = () => setFontSize(prev => Math.min(prev + 2, 32));
     const decreaseFont = () => setFontSize(prev => Math.max(prev - 2, 12));

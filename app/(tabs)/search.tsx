@@ -168,7 +168,7 @@ export default function SearchScreen() {
                                 <Ionicons name="search-outline" size={48} color="#cbd5e1" className="mb-4" />
                                 <Text className="text-xl font-bold text-slate-900">No results found</Text>
                                 <Text className="text-slate-500 text-center mt-2 leading-5">
-                                    We couldn't find any stories matching "{query}". Try searching for a different title or author.
+                                    We couldn&#39;t find any stories matching &#34;{query}&#34;. Try searching for a different title or author.
                                 </Text>
                             </View>
                         }

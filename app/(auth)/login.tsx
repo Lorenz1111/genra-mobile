@@ -88,6 +88,31 @@ export default function LoginScreen() {
     setLoading(false);
   };
 
+  const establishSessionFromOAuthUrl = async (callbackUrl: string) => {
+    const parsedUrl = new URL(callbackUrl);
+    const queryParams = parsedUrl.searchParams;
+    const hashParams = new URLSearchParams(parsedUrl.hash.startsWith("#") ? parsedUrl.hash.slice(1) : parsedUrl.hash);
+
+    const accessToken = hashParams.get("access_token") ?? queryParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token") ?? queryParams.get("refresh_token");
+    const authCode = queryParams.get("code") ?? hashParams.get("code");
+
+    if (accessToken && refreshToken) {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      return { session: data.session, error };
+    }
+
+    if (authCode) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+      return { session: data.session, error };
+    }
+
+    return { session: null, error: new Error("No OAuth session data found in callback URL.") };
+  };
+
   const performOAuth = async (provider: 'google' | 'facebook') => {
     setAuthError(null);
     setSocialLoading(provider);
@@ -96,38 +121,45 @@ export default function LoginScreen() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider, options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
       });
-      if (error) throw error;
-      if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-        if (result.type === "success") {
-          const { data: sessionData } = await supabase.auth.getSessionFromUrl(result.url);
-
-          if (sessionData.session?.user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('status')
-                .eq('id', sessionData.session.user.id)
-                .single();
-
-            if (profile?.status === 'banned') {
-              await supabase.auth.signOut();
-              setSocialLoading(null); // Itigil ang ikot ng social button
-
-              // SENIOR DEV FIX: Pinantay natin yung Alert sa native UI para walang page reload
-              setTimeout(() => {
-                Alert.alert(
-                    "Access Denied",
-                    "Your account has been suspended by the admin. If you believe this is a mistake, please contact support."
-                );
-              }, 100);
-              return;
-            }
-          }
-
-          router.replace("/(tabs)/home");
-        }
+      if (error || !data?.url) {
+        setAuthError("Social login failed. Please try again.");
+        return;
       }
-    } catch (error: any) {
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      if (result.type !== "success" || !result.url) {
+        return;
+      }
+
+      const { session, error: sessionError } = await establishSessionFromOAuthUrl(result.url);
+      if (sessionError || !session?.user) {
+        setAuthError("Social login failed. Please try again.");
+        return;
+      }
+
+      const { data: profile } = await supabase
+          .from('profiles')
+          .select('status')
+          .eq('id', session.user.id)
+          .single();
+
+      if (profile?.status === 'banned') {
+        await supabase.auth.signOut();
+        setSocialLoading(null); // Itigil ang ikot ng social button
+
+        // SENIOR DEV FIX: Pinantay natin yung Alert sa native UI para walang page reload
+        setTimeout(() => {
+          Alert.alert(
+              "Access Denied",
+              "Your account has been suspended by the admin. If you believe this is a mistake, please contact support."
+          );
+        }, 100);
+        return;
+      }
+
+      router.replace("/(tabs)/home");
+    } catch (oauthError) {
+      console.error("OAuth login error", oauthError);
       setAuthError("Social login failed. Please try again.");
     } finally {
       setSocialLoading(null);

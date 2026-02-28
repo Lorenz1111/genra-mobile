@@ -37,11 +37,14 @@ export default function ChangePasswordScreen() {
 
         try {
             // SENIOR DEV MAGIC: Ito lang ang kailangan tawagin para magpalit ng password sa Supabase!
-            const { error } = await supabase.auth.updateUser({
+            const { error: updateError } = await supabase.auth.updateUser({
                 password: newPassword
             });
 
-            if (error) throw error;
+            if (updateError) {
+                Alert.alert("Update Failed", updateError.message);
+                return;
+            }
 
             Alert.alert(
                 "Success",
@@ -49,8 +52,9 @@ export default function ChangePasswordScreen() {
                 [{ text: "OK", onPress: () => router.back() }]
             );
 
-        } catch (error: any) {
-            Alert.alert("Update Failed", error.message);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to update password. Please try again.";
+            Alert.alert("Update Failed", message);
         } finally {
             setSaving(false);
         }

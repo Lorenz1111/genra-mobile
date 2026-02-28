@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, Image, Keyboard, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
@@ -36,17 +36,12 @@ export const CommentSection = ({ bookId }: { bookId: string }) => {
 
     const replyInputRef = useRef<TextInput>(null);
 
-    useEffect(() => {
-        fetchComments();
-        checkUser();
-    }, [bookId]);
-
-    const checkUser = async () => {
+    const checkUser = useCallback(async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) setCurrentUserId(user.id);
-    };
+    }, []);
 
-    const fetchComments = async () => {
+    const fetchComments = useCallback(async () => {
         const { data, error } = await supabase
             .from("book_comments")
             .select(`*, profiles(full_name, avatar_url, is_verified), comment_votes(user_id, vote_type)`)
@@ -55,7 +50,12 @@ export const CommentSection = ({ bookId }: { bookId: string }) => {
 
         if (!error && data) setComments(data as any);
         setLoading(false);
-    };
+    }, [bookId]);
+
+    useEffect(() => {
+        fetchComments();
+        checkUser();
+    }, [fetchComments, checkUser]);
 
     const handlePostComment = async (parentId: string | null = null, replyTargetName: string = "") => {
         let finalCommentText = parentId ? replyText.trim() : newComment.trim();

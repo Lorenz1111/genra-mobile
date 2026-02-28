@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { View, Text, Image, Pressable, Alert, ScrollView, ActivityIndicator, Switch, Linking, RefreshControl, Modal } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,30 +32,34 @@ export default function ProfileScreen() {
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [isViewingAvatar, setIsViewingAvatar] = useState(false);
 
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return router.replace("/(auth)/login");
 
-      const { data: profileData, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
           .single();
 
-      if (error) throw error;
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        return;
+      }
+
       setProfile({ ...profileData, email: user.email } as Profile);
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useFocusEffect(
       useCallback(() => {
         fetchProfileData();
-      }, [])
+      }, [fetchProfileData])
   );
 
   // --- PULL TO REFRESH LOGIC ---
@@ -63,7 +67,7 @@ export default function ProfileScreen() {
     setRefreshing(true);
     await fetchProfileData();
     setRefreshing(false);
-  }, []);
+  }, [fetchProfileData]);
 
   // --- CHANGE AVATAR LOGIC ---
   const handleChangeAvatar = async () => {
@@ -109,16 +113,28 @@ export default function ProfileScreen() {
       formData.append('files', { uri, name: fileName, type: `image/${ext}` } as any);
 
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, formData);
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        Alert.alert("Upload Failed", uploadError.message);
+        return;
+      }
 
       // 3. UPDATE PROFILE WITH NEW URL
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
+      const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('id', profile.id);
+
+      if (profileUpdateError) {
+        Alert.alert("Upload Failed", profileUpdateError.message);
+        return;
+      }
 
       setProfile({ ...profile, avatar_url: publicUrl });
       Alert.alert("Success", "Profile picture updated!");
-    } catch (error: any) {
-      Alert.alert("Upload Failed", error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed. Please try again.";
+      Alert.alert("Upload Failed", message);
     } finally {
       setUploading(false);
     }
@@ -139,7 +155,7 @@ export default function ProfileScreen() {
 
       await MediaLibrary.saveToLibraryAsync(downloadedFile.uri);
       Alert.alert("Saved!", "Profile picture saved to your gallery successfully.");
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Could not save the image. Please try again.");
     }
   };

@@ -4,7 +4,6 @@ import { Alert } from "react-native";
 import { supabase } from "@/lib/supabase";
 import "./global.css";
 
-// SENIOR DEV FIX: 1. Idagdag itong import sa taas
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function RootLayout() {
@@ -21,10 +20,8 @@ export default function RootLayout() {
                     .single();
 
                 if (profile?.status === 'banned') {
-                    // Tahimik na i-logout sa background
                     await supabase.auth.signOut();
 
-                    // Alamin kung nasa auth screen na ba siya (tulad ng Login)
                     const inAuthGroup = segments[0] === '(auth)';
 
                     // Kung nasa loob siya ng app (ex. Home), tsaka natin siya i-kick at i-alert
@@ -50,7 +47,7 @@ export default function RootLayout() {
         return () => {
             subscription.unsubscribe();
         };
-    }, [segments]);
+    }, [router, segments]);
 
     return (
         // SENIOR DEV FIX: 2. Balutin ang buong Stack dito at wag kalimutan ang flex: 1!

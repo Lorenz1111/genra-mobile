@@ -23,7 +23,10 @@ export default function EditInterestsScreen() {
                     .select("genre_id")
                     .eq("profile_id", user.id);
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Error fetching preferences:", error);
+                    return;
+                }
 
                 // Safety check kung walang data
                 const existingIds = data?.map(item => item.genre_id) || [];
@@ -47,9 +50,20 @@ export default function EditInterestsScreen() {
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("Not logged in");
+            if (!user) {
+                Alert.alert("Error", "Not logged in");
+                return;
+            }
 
-            await supabase.from("user_preferred_genres").delete().eq("profile_id", user.id);
+            const { error: deleteError } = await supabase
+                .from("user_preferred_genres")
+                .delete()
+                .eq("profile_id", user.id);
+
+            if (deleteError) {
+                Alert.alert("Error", deleteError.message);
+                return;
+            }
 
             const newPrefsData = preferences.map((genreId) => ({
                 profile_id: user.id,
@@ -57,13 +71,17 @@ export default function EditInterestsScreen() {
             }));
             const { error: insertError } = await supabase.from("user_preferred_genres").insert(newPrefsData);
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                Alert.alert("Error", insertError.message);
+                return;
+            }
 
             Alert.alert("Success", "Your reading preferences have been updated!");
             router.back();
 
-        } catch (error: any) {
-            Alert.alert("Error", error.message);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Could not update preferences.";
+            Alert.alert("Error", message);
         } finally {
             setSaving(false);
         }

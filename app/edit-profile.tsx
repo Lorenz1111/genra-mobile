@@ -41,11 +41,17 @@ export default function EditProfileScreen() {
 
             setUserId(user.id);
 
-            const { data, error } = await supabase
+            const { data, error: profileError } = await supabase
                 .from("profiles")
                 .select("full_name, username, bio, website")
                 .eq("id", user.id)
                 .single();
+
+            if (profileError) {
+                console.error("Failed to load profile:", profileError);
+                setLoading(false);
+                return;
+            }
 
             if (data) {
                 const fetchedData = {
@@ -61,7 +67,7 @@ export default function EditProfileScreen() {
         };
 
         fetchProfile();
-    }, []);
+    }, [router]);
 
     // SENIOR DEV FIX: Live Username Availability Check (Debounced)
     useEffect(() => {
@@ -86,12 +92,18 @@ export default function EditProfileScreen() {
 
         // Maghihintay ng 500ms bago mag-check sa DB (para hindi ma-spam ang API habang nagtatype)
         const timeoutId = setTimeout(async () => {
-            const { data, error } = await supabase
+            const { data, error: usernameCheckError } = await supabase
                 .from("profiles")
                 .select("id")
                 .eq("username", cleanUsername)
                 .neq("id", userId) // Wag isama yung sariling ID natin
                 .maybeSingle(); // maybeSingle para hindi mag-throw ng error kung walang mahanap
+
+            if (usernameCheckError) {
+                console.error("Username check failed:", usernameCheckError);
+                setUsernameStatus('idle');
+                return;
+            }
 
             if (data) {
                 setUsernameStatus('taken');
