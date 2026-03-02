@@ -1,18 +1,44 @@
-import { useState } from "react";
-import { View, Text, Pressable, ActivityIndicator, Alert, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
-import { supabase } from "@/lib/supabase";
 import GenreSelector from "@/components/GenreSelector"; // I-import ang ginawa natin!
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 export default function PreferencesScreen() {
   const router = useRouter();
   const [preferences, setPreferences] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const backAction = () => {
+      // Kapag nag-return tayo ng 'true', sinasabihan natin ang Android na
+      // "Ako na ang bahala dito, wag mong ibalik sa nakaraang screen."
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    // Cleanup function kapag umalis na sila sa screen na ito
+    return () => backHandler.remove();
+  }, []);
+
   const handleFinalSubmit = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         Alert.alert("Error", "Please log in again.");
         return;
@@ -24,17 +50,19 @@ export default function PreferencesScreen() {
       }));
 
       const { error: prefsError } = await supabase
-          .from("user_preferred_genres")
-          .insert(userPrefsData);
+        .from("user_preferred_genres")
+        .insert(userPrefsData);
 
       if (prefsError) {
         Alert.alert("Error", prefsError.message);
         return;
       }
       router.replace("/(tabs)/home");
-
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.";
       Alert.alert("Error", message);
     } finally {
       setLoading(false);
@@ -45,30 +73,46 @@ export default function PreferencesScreen() {
   const isButtonDisabled = loading || preferences.length === 0;
 
   return (
-      <ScrollView className="flex-1 bg-white" contentContainerStyle={{ flexGrow: 1 }}>
-        <Pressable onPress={handleSkip} className="absolute top-16 right-6 p-2 z-10">
-          <Text className="text-primary font-bold text-base">Skip</Text>
-        </Pressable>
+    <ScrollView
+      className="flex-1 bg-white"
+      contentContainerStyle={{ flexGrow: 1 }}
+    >
+      <Pressable
+        onPress={handleSkip}
+        className="absolute top-16 right-6 p-2 z-10"
+      >
+        <Text className="text-primary font-bold text-base">Skip</Text>
+      </Pressable>
 
-        <View className="px-8 gap-8 pt-32 pb-10 flex-1">
-          <View className="mb-2">
-            <Text className="text-slate-900 text-3xl font-extrabold tracking-tight">Pick your favorites</Text>
-            <Text className="text-slate-500 text-base mt-2">Select up to 5 genres to personalize your GenrA reading experience.</Text>
-          </View>
-
-          {/* SENIOR DEV MAGIC: Tinawag lang natin ang component dito! */}
-          <GenreSelector onSelectionChange={setPreferences} />
-
-          <View className="mt-auto pt-8">
-            <Pressable
-                className={`flex-row items-center justify-center rounded-full px-5 py-4 ${isButtonDisabled ? "bg-blue-300 opacity-60" : "bg-primary active:bg-blue-700"}`}
-                onPress={handleFinalSubmit}
-                disabled={isButtonDisabled}
-            >
-              {loading ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-base">Let&#39;s Read!</Text>}
-            </Pressable>
-          </View>
+      <View className="px-8 gap-8 pt-32 pb-10 flex-1">
+        <View className="mb-2">
+          <Text className="text-slate-900 text-3xl font-extrabold tracking-tight">
+            Pick your favorites
+          </Text>
+          <Text className="text-slate-500 text-base mt-2">
+            Select up to 5 genres to personalize your GenrA reading experience.
+          </Text>
         </View>
-      </ScrollView>
+
+        {/* SENIOR DEV MAGIC: Tinawag lang natin ang component dito! */}
+        <GenreSelector onSelectionChange={setPreferences} />
+
+        <View className="mt-auto pt-8">
+          <Pressable
+            className={`flex-row items-center justify-center rounded-full px-5 py-4 ${isButtonDisabled ? "bg-blue-300 opacity-60" : "bg-primary active:bg-blue-700"}`}
+            onPress={handleFinalSubmit}
+            disabled={isButtonDisabled}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-white font-bold text-base">
+                Let&#39;s Read!
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </ScrollView>
   );
 }

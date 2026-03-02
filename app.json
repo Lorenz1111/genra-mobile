@@ -1,13 +1,17 @@
 {
   "expo": {
-    "name": "genra-mobile",
+    "name": "GenrA",
     "slug": "genra-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/genra-logo.png",
     "scheme": "genramobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -20,7 +24,15 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.jlg1233.genramobile"
+      "package": "com.jlg1233.genramobile",
+      "permissions": [
+        "INTERNET",
+        "CAMERA",
+        "ACCESS_NETWORK_STATE",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "output": "static",
